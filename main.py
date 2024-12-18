@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from pyppeteer import launch
 import asyncio
+import os
 
 app = Flask(__name__)
 
@@ -10,12 +11,16 @@ def puppeteer_test():
         result = asyncio.run(get_page_title())
         return jsonify({"title": result})
     except Exception as e:
-        # Log the error for debugging
         return jsonify({"error": str(e)}), 500
 
 async def get_page_title():
     try:
-        browser = await launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"])
+        # Set a writable directory for Pyppeteer to store Chromium
+        browser = await launch(
+            headless=True, 
+            args=["--no-sandbox", "--disable-setuid-sandbox"],
+            executablePath=os.getenv("PUPPETEER_EXECUTABLE_PATH", None)  # Set Chromium path explicitly
+        )
         page = await browser.newPage()
         await page.goto('https://example.com')
         title = await page.title()
@@ -25,6 +30,5 @@ async def get_page_title():
         raise RuntimeError(f"Failed to retrieve page title: {str(e)}")
 
 if __name__ == "__main__":
-    # Enable debug mode for local testing
     app.run(debug=True)
 
