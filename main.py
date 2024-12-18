@@ -1,13 +1,24 @@
+from flask import Flask, jsonify
 from pyppeteer import launch
 import asyncio
 
-async def main():
+app = Flask(__name__)
+
+@app.route('/')
+def puppeteer_test():
+    try:
+        result = asyncio.run(get_page_title())
+        return jsonify({"title": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+async def get_page_title():
     browser = await launch(headless=True)
     page = await browser.newPage()
-    await page.goto('https://ytdata.vercel.app')
+    await page.goto('https://example.com')
     title = await page.title()
-    print(f"Page Title: {title}")
     await browser.close()
+    return title
 
-if __name__ == '__main__':
-    asyncio.get_event_loop().run_until_complete(main())
+# Vercel looks for this "app" variable
+handler = app
