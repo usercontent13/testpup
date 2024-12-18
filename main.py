@@ -13,12 +13,12 @@ def puppeteer_test():
         return jsonify({"error": str(e)}), 500
 
 async def get_page_title():
-    browser = await launch(headless=True)
+    browser = await launch(headless=True, args=["--no-sandbox", "--disable-setuid-sandbox"])
     page = await browser.newPage()
     await page.goto('https://example.com')
     title = await page.title()
     await browser.close()
     return title
 
-# Vercel looks for this "app" variable
-handler = app
+# Vercel requires this `app` variable for routing
+app = app
