@@ -70,23 +70,27 @@ def save_to_db(channel_stats):
     cur = conn.cursor()
 
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS youtube_stats (
-            channel_id TEXT PRIMARY KEY,
-            title TEXT,
-            description TEXT,
-            subscribers BIGINT,
-            views BIGINT,
-            videos INT
-        )
-    """)
+    CREATE TABLE IF NOT EXISTS youtube_stats (
+        id SERIAL PRIMARY KEY,
+        channel_id TEXT UNIQUE,
+        title TEXT,
+        description TEXT,
+        subscribers BIGINT,
+        views BIGINT,
+        videos BIGINT,
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+""")
+
 
     for channel in channel_stats:
         cur.execute("""
-            INSERT INTO youtube_stats (channel_id, title, description, subscribers, views, videos)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            ON CONFLICT (channel_id) DO UPDATE 
-            SET subscribers = EXCLUDED.subscribers, views = EXCLUDED.views, videos = EXCLUDED.videos;
-        """, (channel["channel_id"], channel["title"], channel["description"], channel["subscribers"], channel["views"], channel["videos"]))
+    INSERT INTO youtube_stats (channel_id, title, description, subscribers, views, videos)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    ON CONFLICT (channel_id) DO UPDATE 
+    SET subscribers = EXCLUDED.subscribers, views = EXCLUDED.views, videos = EXCLUDED.videos;
+""", (channel["channel_id"], channel["title"], channel["description"], channel["subscribers"], channel["views"], channel["videos"]))
+
 
     conn.commit()
     cur.close()
