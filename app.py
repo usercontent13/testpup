@@ -15,7 +15,7 @@ def index():
     conn = get_db_connection()
     cur = conn.cursor()
     
-    cur.execute("SELECT channel_id, title, subscribers, views, videos FROM youtube_channels ORDER BY subscribers DESC;")
+    cur.execute("SELECT channel_id, title, subscribers, views, videos FROM youtube_stats ORDER BY subscribers DESC;")
     channels = cur.fetchall()
     
     cur.close()
