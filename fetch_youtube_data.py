@@ -78,24 +78,40 @@ def save_to_db(channel_stats):
         subscribers BIGINT,
         views BIGINT,
         videos BIGINT,
+        prev_subscribers BIGINT DEFAULT NULL,
+        prev_views BIGINT DEFAULT NULL,
+        prev_videos BIGINT DEFAULT NULL,
         last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
-""")
-
+    """)
 
     for channel in channel_stats:
         cur.execute("""
-    INSERT INTO youtube_stats (channel_id, title, description, subscribers, views, videos, last_updated)
-    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
-    ON CONFLICT (channel_id) DO UPDATE 
-    SET subscribers = EXCLUDED.subscribers, views = EXCLUDED.views, videos = EXCLUDED.videos, last_updated = CURRENT_TIMESTAMP;
-""", (channel["channel_id"], channel["title"], channel["description"], channel["subscribers"], channel["views"], channel["videos"]))
+        SELECT subscribers, views, videos FROM youtube_stats WHERE channel_id = %s;
+        """, (channel["channel_id"],))
+        old_data = cur.fetchone()
 
+        prev_subscribers, prev_views, prev_videos = old_data if old_data else (None, None, None)
 
+        cur.execute("""
+        INSERT INTO youtube_stats (channel_id, title, description, subscribers, views, videos, prev_subscribers, prev_views, prev_videos, last_updated)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+        ON CONFLICT (channel_id) DO UPDATE 
+        SET prev_subscribers = youtube_stats.subscribers,
+            prev_views = youtube_stats.views,
+            prev_videos = youtube_stats.videos,
+            subscribers = EXCLUDED.subscribers,
+            views = EXCLUDED.views,
+            videos = EXCLUDED.videos,
+            last_updated = CURRENT_TIMESTAMP;
+        """, (channel["channel_id"], channel["title"], channel["description"],
+              channel["subscribers"], channel["views"], channel["videos"],
+              prev_subscribers, prev_views, prev_videos))
 
     conn.commit()
     cur.close()
     conn.close()
+
 
 # Main Function to Fetch and Save Data
 def fetch_and_store_channel_data(channel_ids):
