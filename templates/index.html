@@ -6,11 +6,30 @@
     <title>YouTube Stats Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js -->
 </head>
 <body>
     <div class="container">
         <h1>YouTube Stats Dashboard</h1>
         <button id="refresh">Refresh Data</button>
+
+        <!-- Summary Cards -->
+        <div class="summary">
+            <div class="card">
+                <h3>Total Subscribers</h3>
+                <p id="totalSubscribers">Loading...</p>
+            </div>
+            <div class="card">
+                <h3>Total Views</h3>
+                <p id="totalViews">Loading...</p>
+            </div>
+            <div class="card">
+                <h3>Total Videos</h3>
+                <p id="totalVideos">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Table Data -->
         <table>
             <thead>
                 <tr>
@@ -24,28 +43,94 @@
                 <tr><td colspan="4">Loading...</td></tr>
             </tbody>
         </table>
+
+        <!-- Bar Chart (Comparison) -->
+        <h2>Subscribers Comparison</h2>
+        <canvas id="subscribersChart"></canvas>
+
+        <!-- Line Chart (Growth Trends) -->
+        <h2>Growth Trends</h2>
+        <canvas id="growthChart"></canvas>
+
     </div>
 
     <script>
     function loadData() {
-    $.get("/data", function(data) {
-        let tableBody = $("#channelData");
-        tableBody.empty();
-        if (data.error) {
-            tableBody.append("<tr><td colspan='4'>Error loading data.</td></tr>");
-        } else {
-            data.forEach(channel => {
-                tableBody.append(`<tr>
-                    <td>${channel["Title"]}</td>
-                    <td>${channel["Subscribers"]}</td>
-                    <td>${channel["Views"]}</td>
-                    <td>${channel["Videos"]}</td>
-                </tr>`);
-            });
-        }
-    });
-}
+        $.get("/data", function(data) {
+            let tableBody = $("#channelData");
+            tableBody.empty();
+            
+            let totalSubscribers = 0;
+            let totalViews = 0;
+            let totalVideos = 0;
 
+            let labels = [];
+            let subscribersData = [];
+            let viewsData = [];
+
+            if (data.error) {
+                tableBody.append("<tr><td colspan='4'>Error loading data.</td></tr>");
+            } else {
+                data.forEach(channel => {
+                    totalSubscribers += parseInt(channel["Subscribers"]);
+                    totalViews += parseInt(channel["Views"]);
+                    totalVideos += parseInt(channel["Videos"]);
+
+                    labels.push(channel["Title"]);
+                    subscribersData.push(parseInt(channel["Subscribers"]));
+                    viewsData.push(parseInt(channel["Views"]));
+
+                    tableBody.append(`<tr>
+                        <td>${channel["Title"]}</td>
+                        <td>${channel["Subscribers"]}</td>
+                        <td>${channel["Views"]}</td>
+                        <td>${channel["Videos"]}</td>
+                    </tr>`);
+                });
+
+                // Update Summary Cards
+                $("#totalSubscribers").text(totalSubscribers.toLocaleString());
+                $("#totalViews").text(totalViews.toLocaleString());
+                $("#totalVideos").text(totalVideos.toLocaleString());
+
+                // Render Charts
+                renderBarChart(labels, subscribersData);
+                renderLineChart(labels, viewsData);
+            }
+        });
+    }
+
+    // Bar Chart (Subscribers Comparison)
+    function renderBarChart(labels, data) {
+        new Chart(document.getElementById("subscribersChart"), {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Subscribers",
+                    data: data,
+                    backgroundColor: "rgba(75, 192, 192, 0.6)"
+                }]
+            }
+        });
+    }
+
+    // Line Chart (Growth Trends)
+    function renderLineChart(labels, data) {
+        new Chart(document.getElementById("growthChart"), {
+            type: "line",
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: "Views Growth",
+                    data: data,
+                    borderColor: "rgba(255, 99, 132, 1)",
+                    backgroundColor: "rgba(255, 99, 132, 0.2)",
+                    fill: true
+                }]
+            }
+        });
+    }
 
     $("#refresh").click(function() {
         $.ajax({
@@ -53,8 +138,8 @@
             type: "POST",
             contentType: "application/json",
             success: function(response) {
-                alert(response.message);  // Show success message
-                loadData();  // Refresh table data
+                alert(response.message);
+                loadData();
             },
             error: function(xhr) {
                 alert("Error updating data: " + xhr.responseText);
@@ -63,9 +148,7 @@
     });
 
     $(document).ready(loadData);
-</script>
-
-
+    </script>
 
 </body>
 </html>
