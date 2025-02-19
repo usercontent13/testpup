@@ -70,7 +70,7 @@ def save_to_db(channel_stats):
     cur = conn.cursor()
 
     cur.execute("""
-        CREATE TABLE IF NOT EXISTS youtube_channels (
+        CREATE TABLE IF NOT EXISTS youtube_stats (
             channel_id TEXT PRIMARY KEY,
             title TEXT,
             description TEXT,
@@ -82,7 +82,7 @@ def save_to_db(channel_stats):
 
     for channel in channel_stats:
         cur.execute("""
-            INSERT INTO youtube_channels (channel_id, title, description, subscribers, views, videos)
+            INSERT INTO youtube_stats (channel_id, title, description, subscribers, views, videos)
             VALUES (%s, %s, %s, %s, %s, %s)
             ON CONFLICT (channel_id) DO UPDATE 
             SET subscribers = EXCLUDED.subscribers, views = EXCLUDED.views, videos = EXCLUDED.videos;
