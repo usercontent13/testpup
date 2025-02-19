@@ -27,34 +27,43 @@
     </div>
 
     <script>
-        function loadData() {
-            $.get("/data", function(data) {
-                let tableBody = $("#channelData");
-                tableBody.empty();
-                if (data.error) {
-                    tableBody.append("<tr><td colspan='4'>Error loading data.</td></tr>");
-                } else {
-                    data.forEach(channel => {
-                        tableBody.append(`<tr>
-                            <td>${channel["Title"]}</td>
-                            <td>${channel["Subscribers"]}</td>
-                            <td>${channel["Views"]}</td>
-                            <td>${channel["Videos"]}</td>
-                        </tr>`);
-                    });
-                }
-            });
-        }
-
-        $("#refresh").click(function() {
-            $.get("/update", function(response) {
-                if (response.status === "updated") {
-                    loadData();
-                }
-            });
+    function loadData() {
+        $.get("/data", function(data) {
+            let tableBody = $("#channelData");
+            tableBody.empty();
+            if (data.error) {
+                tableBody.append("<tr><td colspan='4'>Error loading data.</td></tr>");
+            } else {
+                data.forEach(channel => {
+                    tableBody.append(`<tr>
+                        <td>${channel["Title"]}</td>
+                        <td>${channel["Subscribers"]}</td>
+                        <td>${channel["Views"]}</td>
+                        <td>${channel["Videos"]}</td>
+                    </tr>`);
+                });
+            }
         });
+    }
 
-        $(document).ready(loadData);
-    </script>
+    $("#refresh").click(function() {
+        $.ajax({
+            url: "/update",
+            type: "POST",
+            contentType: "application/json",
+            data: JSON.stringify({}),  // No need to send channel_ids, backend will fetch from config.py
+            success: function(response) {
+                alert(response.message);  // Show success message
+                loadData();  // Refresh table data
+            },
+            error: function(xhr) {
+                alert("Error updating data: " + xhr.responseText);
+            }
+        });
+    });
+
+    $(document).ready(loadData);
+</script>
+
 </body>
 </html>
