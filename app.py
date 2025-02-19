@@ -33,28 +33,37 @@ def get_data():
         FROM youtube_stats 
         ORDER BY subscribers DESC;
     """)
-    
+
     data = []
     for row in cur.fetchall():
         title, subscribers, prev_subscribers, views, prev_views, videos, prev_videos = row
 
-        # Compute change
+        # Compute changes
         sub_change = subscribers - prev_subscribers if prev_subscribers else 0
         views_change = views - prev_views if prev_views else 0
         videos_change = videos - prev_videos if prev_videos else 0
 
-        # Prepare the response
+        # Format trends with indicators
+        def format_change(value, change):
+            if change > 0:
+                return f"{value} ⬆{change}"
+            elif change < 0:
+                return f"{value} ⬇{abs(change)}"
+            else:
+                return f"{value}"
+
         data.append({
             "Title": title,
-            "Subscribers": f"{subscribers} {'⬆'+str(sub_change) if sub_change > 0 else '⬇'+str(abs(sub_change)) if sub_change < 0 else ''}",
-            "Views": f"{views} {'⬆'+str(views_change) if views_change > 0 else '⬇'+str(abs(views_change)) if views_change < 0 else ''}",
-            "Videos": f"{videos} {'⬆'+str(videos_change) if videos_change > 0 else '⬇'+str(abs(videos_change)) if videos_change < 0 else ''}",
+            "Subscribers": format_change(subscribers, sub_change),
+            "Views": format_change(views, views_change),
+            "Videos": format_change(videos, videos_change),
         })
-    
+
     cur.close()
     conn.close()
-    
+
     return jsonify(data)
+
 
 # API Route to Fetch New Data
 @app.route("/update", methods=["POST"])
