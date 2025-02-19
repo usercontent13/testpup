@@ -1,67 +1,99 @@
-import psycopg2
+import os
 import requests
-from config import API_KEY, DATABASE_URL, CHANNEL_IDS
+import time
+import psycopg2
+from tqdm import tqdm
+from config import DATABASE_URL, API_KEY
 
-def connect_db():
-    """Create a database connection."""
+# Connect to PostgreSQL
+def get_db_connection():
     return psycopg2.connect(DATABASE_URL, sslmode="require")
 
-def setup_table():
-    """Create the YouTube stats table if not exists."""
-    with connect_db() as conn:
-        with conn.cursor() as cur:
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS youtube_stats (
-                    id SERIAL PRIMARY KEY,
-                    channel_id TEXT UNIQUE,
-                    title TEXT,
-                    subscribers BIGINT,
-                    views BIGINT,
-                    videos BIGINT,
-                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            """)
-            conn.commit()
-
-def get_channel_stats(channel_id):
-    """Fetch YouTube channel statistics."""
-    url = "https://www.googleapis.com/youtube/v3/channels"
-    params = {"part": "snippet,statistics", "id": channel_id, "key": API_KEY}
-    response = requests.get(url, params=params)
-
-    if response.status_code == 200:
+# Resolve YouTube Handle to Channel ID
+def resolve_handle_to_id(handle):
+    """Convert YouTube handle (@username) to channel ID."""
+    url = "https://www.googleapis.com/youtube/v3/search"
+    params = {"part": "snippet", "q": handle, "type": "channel", "key": API_KEY}
+    
+    try:
+        response = requests.get(url, params=params)
+        response.raise_for_status()
         data = response.json()
-        if "items" in data and len(data["items"]) > 0:
-            item = data["items"][0]
-            return {
-                "channel_id": channel_id,
-                "title": item["snippet"]["title"],
-                "subscribers": int(item["statistics"].get("subscriberCount", 0)),
-                "views": int(item["statistics"].get("viewCount", 0)),
-                "videos": int(item["statistics"].get("videoCount", 0)),
-            }
+        if data.get("items"):
+            return data["items"][0]["id"]["channelId"]
+    except requests.RequestException as e:
+        print(f"Error resolving {handle}: {e}")
     return None
 
-def update_channel_stats():
-    """Fetch latest stats and update the database."""
-    setup_table()
-    with connect_db() as conn:
-        with conn.cursor() as cur:
-            for channel_id in CHANNEL_IDS:
-                data = get_channel_stats(channel_id)
-                if data:
-                    cur.execute("""
-                        INSERT INTO youtube_stats (channel_id, title, subscribers, views, videos)
-                        VALUES (%s, %s, %s, %s, %s)
-                        ON CONFLICT (channel_id) 
-                        DO UPDATE SET
-                            title = EXCLUDED.title,
-                            subscribers = EXCLUDED.subscribers,
-                            views = EXCLUDED.views,
-                            videos = EXCLUDED.videos,
-                            last_updated = CURRENT_TIMESTAMP
-                    """, (data["channel_id"], data["title"], data["subscribers"], data["views"], data["videos"]))
-            conn.commit()
+# Fetch Channel Stats
+def get_channel_stats(channel_ids):
+    """Fetch channel statistics in batches."""
+    url = "https://www.googleapis.com/youtube/v3/channels"
+    all_stats = []
 
-if __name__ == "__main__":
-    update_channel_stats()
+    for i in range(0, len(channel_ids), 5):  # Process in batches of 5
+        batch = channel_ids[i:i+5]
+        print(f"Processing batch: {batch}")
+        
+        resolved_ids = [resolve_handle_to_id(ch) if ch.startswith("@") else ch for ch in batch]
+        resolved_ids = [ch for ch in resolved_ids if ch]  # Remove None values
+
+        params = {"part": "snippet,statistics", "id": ",".join(resolved_ids), "key": API_KEY}
+        try:
+            response = requests.get(url, params=params)
+            response.raise_for_status()
+            data = response.json()
+            
+            for item in data.get("items", []):
+                snippet = item["snippet"]
+                statistics = item["statistics"]
+                all_stats.append({
+                    "channel_id": item["id"],
+                    "title": snippet["title"],
+                    "description": snippet["description"],
+                    "subscribers": statistics.get("subscriberCount", "0"),
+                    "views": statistics.get("viewCount", "0"),
+                    "videos": statistics.get("videoCount", "0"),
+                })
+            
+        except requests.RequestException as e:
+            print(f"Error fetching batch {batch}: {e}")
+        
+        time.sleep(2)  # Prevent API rate limits
+
+    return all_stats
+
+# Save Data to Database
+def save_to_db(channel_stats):
+    """Store fetched channel statistics in PostgreSQL."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS youtube_channels (
+            channel_id TEXT PRIMARY KEY,
+            title TEXT,
+            description TEXT,
+            subscribers BIGINT,
+            views BIGINT,
+            videos INT
+        )
+    """)
+
+    for channel in channel_stats:
+        cur.execute("""
+            INSERT INTO youtube_channels (channel_id, title, description, subscribers, views, videos)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (channel_id) DO UPDATE 
+            SET subscribers = EXCLUDED.subscribers, views = EXCLUDED.views, videos = EXCLUDED.videos;
+        """, (channel["channel_id"], channel["title"], channel["description"], channel["subscribers"], channel["views"], channel["videos"]))
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+# Main Function to Fetch and Save Data
+def fetch_and_store_channel_data(channel_ids):
+    stats = get_channel_stats(channel_ids)
+    save_to_db(stats)
+    return stats
