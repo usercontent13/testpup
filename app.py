@@ -1,31 +1,39 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, request, jsonify
+from fetch_youtube_data import fetch_and_store_channel_data
 import psycopg2
 from config import DATABASE_URL
-from fetch_youtube_data import update_channel_stats
 
 app = Flask(__name__)
 
-def get_data():
-    """Retrieve YouTube stats from the database."""
-    with psycopg2.connect(DATABASE_URL, sslmode="require") as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT title, subscribers, views, videos FROM youtube_stats ORDER BY subscribers DESC")
-            return [{"Title": row[0], "Subscribers": row[1], "Views": row[2], "Videos": row[3]} for row in cur.fetchall()]
+# Get database connection
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL, sslmode="require")
 
+# Home Route (Dashboard)
 @app.route("/")
 def index():
-    return render_template("index.html")
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT channel_id, title, subscribers, views, videos FROM youtube_channels ORDER BY subscribers DESC;")
+    channels = cur.fetchall()
+    
+    cur.close()
+    conn.close()
+    
+    return render_template("index.html", channels=channels)
 
-@app.route("/data")
+# API Route to Fetch New Data
+@app.route("/fetch", methods=["POST"])
 def fetch_data():
-    """Return latest YouTube stats."""
-    return jsonify(get_data())
+    data = request.json
+    channel_ids = data.get("channel_ids", [])
 
-@app.route("/update")
-def update_data():
-    """Manually update YouTube stats."""
-    update_channel_stats()
-    return jsonify({"status": "updated"})
+    if not channel_ids:
+        return jsonify({"error": "No channel IDs provided"}), 400
+
+    fetch_and_store_channel_data(channel_ids)
+    return jsonify({"message": "Data updated successfully"}), 200
 
 if __name__ == "__main__":
     app.run(debug=True)
