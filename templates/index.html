@@ -51,7 +51,6 @@
             url: "/update",
             type: "POST",
             contentType: "application/json",
-            data: JSON.stringify({}),  // Send empty data, as channel_ids are in config.py
             success: function(response) {
                 alert(response.message);  // Show success message
                 loadData();  // Refresh table data
@@ -64,6 +63,7 @@
 
     $(document).ready(loadData);
 </script>
+
 
 
 </body>
