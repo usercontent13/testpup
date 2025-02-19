@@ -25,16 +25,35 @@ def index():
 
 @app.route("/data")
 def get_data():
-    """Fetch data from the database and send it to the frontend."""
     conn = get_db_connection()
     cur = conn.cursor()
     
-    cur.execute("SELECT title, subscribers, views, videos FROM youtube_stats ORDER BY subscribers DESC;")
-    data = [{"Title": row[0], "Subscribers": row[1], "Views": row[2], "Videos": row[3]} for row in cur.fetchall()]
+    cur.execute("""
+        SELECT title, subscribers, prev_subscribers, views, prev_views, videos, prev_videos 
+        FROM youtube_stats 
+        ORDER BY subscribers DESC;
+    """)
+    
+    data = []
+    for row in cur.fetchall():
+        title, subscribers, prev_subscribers, views, prev_views, videos, prev_videos = row
+
+        # Compute change
+        sub_change = subscribers - prev_subscribers if prev_subscribers else 0
+        views_change = views - prev_views if prev_views else 0
+        videos_change = videos - prev_videos if prev_videos else 0
+
+        # Prepare the response
+        data.append({
+            "Title": title,
+            "Subscribers": f"{subscribers} {'⬆'+str(sub_change) if sub_change > 0 else '⬇'+str(abs(sub_change)) if sub_change < 0 else ''}",
+            "Views": f"{views} {'⬆'+str(views_change) if views_change > 0 else '⬇'+str(abs(views_change)) if views_change < 0 else ''}",
+            "Videos": f"{videos} {'⬆'+str(videos_change) if videos_change > 0 else '⬇'+str(abs(videos_change)) if videos_change < 0 else ''}",
+        })
     
     cur.close()
     conn.close()
-
+    
     return jsonify(data)
 
 # API Route to Fetch New Data
