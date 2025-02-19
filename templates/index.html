@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Stats Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>YouTube Stats Dashboard</h1>
+        <button id="refresh">Refresh Data</button>
+        <table>
+            <thead>
+                <tr>
+                    <th>Channel</th>
+                    <th>Subscribers</th>
+                    <th>Views</th>
+                    <th>Videos</th>
+                </tr>
+            </thead>
+            <tbody id="channelData">
+                <tr><td colspan="4">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function loadData() {
+            $.get("/data", function(data) {
+                let tableBody = $("#channelData");
+                tableBody.empty();
+                if (data.error) {
+                    tableBody.append("<tr><td colspan='4'>Error loading data.</td></tr>");
+                } else {
+                    data.forEach(channel => {
+                        tableBody.append(`<tr>
+                            <td>${channel["Title"]}</td>
+                            <td>${channel["Subscribers"]}</td>
+                            <td>${channel["Views"]}</td>
+                            <td>${channel["Videos"]}</td>
+                        </tr>`);
+                    });
+                }
+            });
+        }
+
+        $("#refresh").click(function() {
+            $.get("/update", function(response) {
+                if (response.status === "updated") {
+                    loadData();
+                }
+            });
+        });
+
+        $(document).ready(loadData);
+    </script>
+</body>
+</html>
