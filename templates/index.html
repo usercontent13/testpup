@@ -28,23 +28,24 @@
 
     <script>
     function loadData() {
-        $.get("/data", function(data) {
-            let tableBody = $("#channelData");
-            tableBody.empty();
-            if (data.error) {
-                tableBody.append("<tr><td colspan='4'>Error loading data.</td></tr>");
-            } else {
-                data.forEach(channel => {
-                    tableBody.append(`<tr>
-                        <td>${channel["Title"]}</td>
-                        <td>${channel["Subscribers"]}</td>
-                        <td>${channel["Views"]}</td>
-                        <td>${channel["Videos"]}</td>
-                    </tr>`);
-                });
-            }
-        });
-    }
+    $.get("/data", function(data) {
+        let tableBody = $("#channelData");
+        tableBody.empty();
+        if (data.error) {
+            tableBody.append("<tr><td colspan='4'>Error loading data.</td></tr>");
+        } else {
+            data.forEach(channel => {
+                tableBody.append(`<tr>
+                    <td>${channel["Title"]}</td>
+                    <td>${channel["Subscribers"]}</td>
+                    <td>${channel["Views"]}</td>
+                    <td>${channel["Videos"]}</td>
+                </tr>`);
+            });
+        }
+    });
+}
+
 
     $("#refresh").click(function() {
         $.ajax({
