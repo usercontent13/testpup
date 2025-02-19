@@ -85,11 +85,12 @@ def save_to_db(channel_stats):
 
     for channel in channel_stats:
         cur.execute("""
-    INSERT INTO youtube_stats (channel_id, title, description, subscribers, views, videos)
-    VALUES (%s, %s, %s, %s, %s, %s)
+    INSERT INTO youtube_stats (channel_id, title, description, subscribers, views, videos, last_updated)
+    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
     ON CONFLICT (channel_id) DO UPDATE 
-    SET subscribers = EXCLUDED.subscribers, views = EXCLUDED.views, videos = EXCLUDED.videos;
+    SET subscribers = EXCLUDED.subscribers, views = EXCLUDED.views, videos = EXCLUDED.videos, last_updated = CURRENT_TIMESTAMP;
 """, (channel["channel_id"], channel["title"], channel["description"], channel["subscribers"], channel["views"], channel["videos"]))
+
 
 
     conn.commit()
