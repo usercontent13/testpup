@@ -27,7 +27,7 @@ def index():
 def get_data():
     conn = get_db_connection()
     cur = conn.cursor()
-    
+
     cur.execute("""
         SELECT title, subscribers, prev_subscribers, views, prev_views, videos, prev_videos 
         FROM youtube_stats 
@@ -35,6 +35,10 @@ def get_data():
     """)
 
     data = []
+    total_subscribers = 0
+    total_views = 0
+    total_videos = 0
+
     for row in cur.fetchall():
         title, subscribers, prev_subscribers, views, prev_views, videos, prev_videos = row
 
@@ -43,7 +47,11 @@ def get_data():
         views_change = views - prev_views if prev_views else 0
         videos_change = videos - prev_videos if prev_videos else 0
 
-        # Format trends with indicators
+        total_subscribers += subscribers
+        total_views += views
+        total_videos += videos
+
+        # Format trends
         def format_change(value, change):
             if change > 0:
                 return f"{value} ⬆{change}"
@@ -62,7 +70,13 @@ def get_data():
     cur.close()
     conn.close()
 
-    return jsonify(data)
+    return jsonify({
+        "channels": data,
+        "totalSubscribers": total_subscribers,
+        "totalViews": total_views,
+        "totalVideos": total_videos
+    })
+
 
 
 # API Route to Fetch New Data
