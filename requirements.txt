@@ -1,2 +1,4 @@
 flask
-pyppeteer
+requests
+gunicorn
+psycopg2
