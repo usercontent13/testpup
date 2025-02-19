@@ -23,8 +23,22 @@ def index():
     
     return render_template("index.html", channels=channels)
 
+@app.route("/data")
+def get_data():
+    """Fetch data from the database and send it to the frontend."""
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT title, subscribers, views, videos FROM youtube_stats ORDER BY subscribers DESC;")
+    data = [{"Title": row[0], "Subscribers": row[1], "Views": row[2], "Videos": row[3]} for row in cur.fetchall()]
+    
+    cur.close()
+    conn.close()
+
+    return jsonify(data)
+
 # API Route to Fetch New Data
-@app.route("/fetch", methods=["POST"])
+@app.route("/update", methods=["POST"])
 def fetch_data():
     data = request.json
     channel_ids = data.get("channel_ids", [])
