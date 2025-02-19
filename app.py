@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, jsonify
 from fetch_youtube_data import fetch_and_store_channel_data
 import psycopg2
-from config import DATABASE_URL
+from config import DATABASE_URL, CHANNEL_IDS  # Import CHANNEL_IDS
 
 app = Flask(__name__)
 
@@ -40,13 +40,11 @@ def get_data():
 # API Route to Fetch New Data
 @app.route("/update", methods=["POST"])
 def fetch_data():
-    data = request.json
-    channel_ids = data.get("channel_ids", [])
+    """Fetch and store data using predefined channel IDs from config.py."""
+    if not CHANNEL_IDS:
+        return jsonify({"error": "No channel IDs defined in config.py"}), 400
 
-    if not channel_ids:
-        return jsonify({"error": "No channel IDs provided"}), 400
-
-    fetch_and_store_channel_data(channel_ids)
+    fetch_and_store_channel_data(CHANNEL_IDS)
     return jsonify({"message": "Data updated successfully"}), 200
 
 if __name__ == "__main__":
