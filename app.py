@@ -1,7 +1,7 @@
+import threading
 from flask import Flask, render_template, request, jsonify
 from fetch_youtube_data import fetch_and_store_channel_data
 import psycopg2
-import threading  # Import threading for async execution
 from config import DATABASE_URL, CHANNEL_IDS  # Import CHANNEL_IDS
 
 app = Flask(__name__)
@@ -78,20 +78,23 @@ def get_data():
         "totalVideos": total_videos
     })
 
+# Background function for data fetching
+def fetch_data_background():
+    """Fetch and store data asynchronously."""
+    fetch_and_store_channel_data(CHANNEL_IDS)
 
-# **NEW** API Route for Background Data Fetch
+# API Route to Fetch New Data (Async)
 @app.route("/update", methods=["POST"])
 def fetch_data():
-    """Fetch and store data asynchronously using threading."""
+    """Start the data fetching process asynchronously."""
     if not CHANNEL_IDS:
         return jsonify({"error": "No channel IDs defined in config.py"}), 400
 
-    # Run fetching process in the background
-    thread = threading.Thread(target=fetch_and_store_channel_data, args=(CHANNEL_IDS,))
+    # Run fetch in a separate thread
+    thread = threading.Thread(target=fetch_data_background)
     thread.start()
 
     return jsonify({"message": "Data update started in the background!"}), 202  # 202 Accepted
-
 
 if __name__ == "__main__":
     app.run(debug=True)
