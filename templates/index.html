@@ -4,36 +4,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Stats Dashboard</title>
+    
+    <!-- Stylesheets -->
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <!-- jQuery & Chart.js -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
         <h1>YouTube Stats Dashboard</h1>
+
+        <!-- Refresh Button -->
         <button id="refresh">Refresh Data</button>
+
+        <!-- Update Status -->
+        <div id="updateStatus" class="hidden">
+            <p id="updateMessage">Updating data...</p>
+            <p id="updateProgress">0%</p>
+        </div>
 
         <!-- Summary Cards -->
         <div class="summary">
             <div class="card">
                 <h3>Total Subscribers</h3>
                 <p id="totalSubscribers">Loading...</p>
+                <span id="subsChange" class="change-indicator"></span>
             </div>
             <div class="card">
                 <h3>Total Views</h3>
                 <p id="totalViews">Loading...</p>
+                <span id="viewsChange" class="change-indicator"></span>
             </div>
             <div class="card">
                 <h3>Total Videos</h3>
                 <p id="totalVideos">Loading...</p>
-            </div>
-        </div>
-
-        <!-- Progress Indicator -->
-        <div id="updateStatus" class="hidden">
-            <p id="updateMessage">Idle</p>
-            <div class="progress-bar">
-                <div id="updateProgressBar" class="progress"></div>
+                <span id="videosChange" class="change-indicator"></span>
             </div>
         </div>
 
@@ -52,56 +59,152 @@
             </tbody>
         </table>
 
+        <!-- Charts Section -->
+        <h2>Subscribers Comparison</h2>
+        <canvas id="subscribersChart"></canvas>
+
+        <h2>Growth Trends</h2>
+        <canvas id="growthChart"></canvas>
     </div>
 
+    <!-- JavaScript -->
     <script>
-    function loadData() {
-        $.get("/data", function(data) {
-            $("#channelData").empty();
-            $("#totalSubscribers").text(data.totalSubscribers.toLocaleString());
-            $("#totalViews").text(data.totalViews.toLocaleString());
-            $("#totalVideos").text(data.totalVideos.toLocaleString());
+        let subscribersChartInstance = null;
+        let growthChartInstance = null;
+        let prevData = { totalSubscribers: 0, totalViews: 0, totalVideos: 0 };
 
-            if (!data.channels.length) {
-                $("#channelData").append("<tr><td colspan='4'>No data available.</td></tr>");
+        function loadData() {
+            $.get("/data", function(data) {
+                let tableBody = $("#channelData");
+                tableBody.empty();
+
+                let totalSubscribers = data.totalSubscribers;
+                let totalViews = data.totalViews;
+                let totalVideos = data.totalVideos;
+
+                let labels = [];
+                let subscribersData = [];
+                let viewsData = [];
+
+                if (!data.channels || data.channels.length === 0) {
+                    tableBody.append("<tr><td colspan='4'>No data available.</td></tr>");
+                } else {
+                    data.channels.forEach(channel => {
+                        labels.push(channel["Title"]);
+                        subscribersData.push(parseInt(channel["Subscribers"]));
+                        viewsData.push(parseInt(channel["Views"]));
+
+                        tableBody.append(`
+                            <tr>
+                                <td>${channel["Title"]}</td>
+                                <td>${channel["Subscribers"]}</td>
+                                <td>${channel["Views"]}</td>
+                                <td>${channel["Videos"]}</td>
+                            </tr>
+                        `);
+                    });
+
+                    // Update Summary Cards
+                    $("#totalSubscribers").text(totalSubscribers.toLocaleString());
+                    $("#totalViews").text(totalViews.toLocaleString());
+                    $("#totalVideos").text(totalVideos.toLocaleString());
+
+                    // Update Change Indicators
+                    updateChangeIndicator("#subsChange", totalSubscribers - prevData.totalSubscribers);
+                    updateChangeIndicator("#viewsChange", totalViews - prevData.totalViews);
+                    updateChangeIndicator("#videosChange", totalVideos - prevData.totalVideos);
+
+                    // Store current data as previous for next comparison
+                    prevData = { totalSubscribers, totalViews, totalVideos };
+
+                    // Render Charts
+                    renderBarChart(labels, subscribersData);
+                    renderLineChart(labels, viewsData);
+                }
+            });
+        }
+
+        function updateChangeIndicator(element, change) {
+            if (change > 0) {
+                $(element).html(`⬆ ${change.toLocaleString()}`).addClass("increase").removeClass("decrease");
+            } else if (change < 0) {
+                $(element).html(`⬇ ${Math.abs(change).toLocaleString()}`).addClass("decrease").removeClass("increase");
             } else {
-                data.channels.forEach(channel => {
-                    $("#channelData").append(`<tr>
-                        <td>${channel["Title"]}</td>
-                        <td>${channel["Subscribers"]}</td>
-                        <td>${channel["Views"]}</td>
-                        <td>${channel["Videos"]}</td>
-                    </tr>`);
-                });
+                $(element).html("");
             }
-        });
-    }
+        }
 
-    function checkUpdateStatus() {
-        $.get("/update_status", function(status) {
-            $("#updateMessage").text(status.message);
-            $("#updateProgressBar").css("width", status.progress + "%");
-
-            if (status.updating) {
-                $("#updateStatus").removeClass("hidden");
-                $("#refresh").prop("disabled", true);
-            } else {
-                $("#updateStatus").addClass("hidden");
-                $("#refresh").prop("disabled", false);
+        function renderBarChart(labels, data) {
+            if (subscribersChartInstance) {
+                subscribersChartInstance.destroy();
             }
+            subscribersChartInstance = new Chart(document.getElementById("subscribersChart"), {
+                type: "bar",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Subscribers",
+                        data: data,
+                        backgroundColor: "rgba(75, 192, 192, 0.6)"
+                    }]
+                }
+            });
+        }
+
+        function renderLineChart(labels, data) {
+            if (growthChartInstance) {
+                growthChartInstance.destroy();
+            }
+            growthChartInstance = new Chart(document.getElementById("growthChart"), {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: "Views Growth",
+                        data: data,
+                        borderColor: "rgba(255, 99, 132, 1)",
+                        backgroundColor: "rgba(255, 99, 132, 0.2)",
+                        fill: true
+                    }]
+                }
+            });
+        }
+
+        function checkUpdateStatus() {
+            $.get("/update_status", function(status) {
+                $("#updateMessage").text(status.message);
+                $("#updateProgress").text(status.progress + "%");
+
+                if (status.updating) {
+                    $("#refresh").prop("disabled", true);
+                } else {
+                    $("#refresh").prop("disabled", false);
+                    $("#updateStatus").addClass("hidden");  // Hide when done
+                }
+            });
+        }
+
+        $("#refresh").click(function() {
+            $("#updateStatus").removeClass("hidden"); // Show update status
+            $("#updateMessage").text("Updating data...");
+            $("#updateProgress").text("0%");
+
+            $.ajax({
+                url: "/update",
+                type: "POST",
+                contentType: "application/json",
+                success: function(response) {
+                    console.log(response.message);
+                    checkUpdateStatus();
+                },
+                error: function(xhr) {
+                    alert("Error updating data: " + xhr.responseText);
+                }
+            });
         });
-    }
 
-    $("#refresh").click(function() {
-        $.post("/update", function(response) {
-            alert(response.message);
-            checkUpdateStatus();
-        });
-    });
-
-    $(document).ready(loadData);
-    setInterval(checkUpdateStatus, 2000);
-</script>
-
+        setInterval(checkUpdateStatus, 2000);
+        $(document).ready(loadData);
+    </script>
 </body>
 </html>
