@@ -7,7 +7,10 @@ from config import DATABASE_URL, CHANNEL_IDS
 
 app = Flask(__name__)
 
-# Global variable to track update status
+# Global lock to ensure only one update runs at a time
+queue_lock = threading.Lock()
+
+# Update status tracking
 update_status = {"updating": False, "progress": 0, "message": "Idle"}
 
 # Get database connection
@@ -19,6 +22,7 @@ def get_db_connection():
 def index():
     return render_template("index.html")
 
+# Fetch Data Route
 @app.route("/data")
 def get_data():
     conn = get_db_connection()
@@ -85,27 +89,29 @@ def fetch_data():
 
     def background_fetch():
         global update_status
-        update_status["updating"] = True
-        update_status["progress"] = 0
-        update_status["message"] = "Fetching data..."
 
-        total_batches = len(CHANNEL_IDS) // 5 + (1 if len(CHANNEL_IDS) % 5 else 0)
+        with queue_lock:  # Ensure only one thread runs at a time
+            update_status["updating"] = True
+            update_status["progress"] = 0
+            update_status["message"] = "Fetching data..."
 
-        for i in range(0, len(CHANNEL_IDS), 5):
-            batch = CHANNEL_IDS[i:i + 5]
-            print(f"🔄 Processing batch {i//5 + 1}/{total_batches}: {batch}")
-            
-            fetch_and_store_channel_data(batch)
-            
-            update_status["progress"] = int(((i + 5) / len(CHANNEL_IDS)) * 100)
-            update_status["message"] = f"Processed batch {i//5 + 1}/{total_batches}"
+            total_batches = len(CHANNEL_IDS) // 5 + (1 if len(CHANNEL_IDS) % 5 else 0)
 
-            time.sleep(2)  # Simulate processing delay
+            for i in range(0, len(CHANNEL_IDS), 5):
+                batch = CHANNEL_IDS[i:i + 5]
+                print(f"🔄 Processing batch {i//5 + 1}/{total_batches}: {batch}")
+                
+                fetch_and_store_channel_data(batch)
+                
+                update_status["progress"] = int(((i + 5) / len(CHANNEL_IDS)) * 100)
+                update_status["message"] = f"Processed batch {i//5 + 1}/{total_batches}"
 
-        update_status["progress"] = 100
-        update_status["message"] = "Update completed!"
-        update_status["updating"] = False
-        print("✅ Data update completed!")
+                time.sleep(2)  # Simulate processing delay
+
+            update_status["progress"] = 100
+            update_status["message"] = "Update completed!"
+            update_status["updating"] = False
+            print("✅ Data update completed!")
 
     # Run the function in a separate thread
     thread = threading.Thread(target=background_fetch)
