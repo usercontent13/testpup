@@ -28,6 +28,8 @@ def resolve_handle_to_id(handle):
 # Fetch Channel Stats
 def get_channel_stats(channel_ids):
     """Fetch channel statistics in batches."""
+    print(f"📡 Fetching data for channels: {channel_ids}")
+
     url = "https://www.googleapis.com/youtube/v3/channels"
     all_stats = []
 
@@ -66,6 +68,7 @@ def get_channel_stats(channel_ids):
 # Save Data to Database
 def save_to_db(channel_stats):
     """Store fetched channel statistics in PostgreSQL."""
+
     conn = get_db_connection()
     cur = conn.cursor()
 
@@ -86,6 +89,7 @@ def save_to_db(channel_stats):
     """)
 
     for channel in channel_stats:
+        print(f"➡ Updating: {channel['title']} ({channel['channel_id']})")
         cur.execute("""
         SELECT subscribers, views, videos FROM youtube_stats WHERE channel_id = %s;
         """, (channel["channel_id"],))
