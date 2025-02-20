@@ -56,49 +56,46 @@
 
     <script>
     function loadData() {
-        $.get("/data", function(data) {
-            let tableBody = $("#channelData");
-            tableBody.empty();
-            
-            let totalSubscribers = 0;
-            let totalViews = 0;
-            let totalVideos = 0;
+    $.get("/data", function(data) {  
+        let tableBody = $("#channelData");
+        tableBody.empty();
 
-            let labels = [];
-            let subscribersData = [];
-            let viewsData = [];
+        let totalSubscribers = data.totalSubscribers;
+        let totalViews = data.totalViews;
+        let totalVideos = data.totalVideos;
 
-            if (data.error) {
-                tableBody.append("<tr><td colspan='4'>Error loading data.</td></tr>");
-            } else {
-                data.forEach(channel => {
-                    totalSubscribers += parseInt(channel["Subscribers"]);
-                    totalViews += parseInt(channel["Views"]);
-                    totalVideos += parseInt(channel["Videos"]);
+        let labels = [];
+        let subscribersData = [];
+        let viewsData = [];
 
-                    labels.push(channel["Title"]);
-                    subscribersData.push(parseInt(channel["Subscribers"]));
-                    viewsData.push(parseInt(channel["Views"]));
+        if (!data.channels || data.channels.length === 0) {
+            tableBody.append("<tr><td colspan='4'>No data available.</td></tr>");
+        } else {
+            data.channels.forEach(channel => {
+                labels.push(channel["Title"]);
+                subscribersData.push(parseInt(channel["Subscribers"]));
+                viewsData.push(parseInt(channel["Views"]));
 
-                    tableBody.append(`<tr>
-                        <td>${channel["Title"]}</td>
-                        <td>${channel["Subscribers"]}</td>
-                        <td>${channel["Views"]}</td>
-                        <td>${channel["Videos"]}</td>
-                    </tr>`);
-                });
+                tableBody.append(`<tr>
+                    <td>${channel["Title"]}</td>
+                    <td>${channel["Subscribers"]}</td>
+                    <td>${channel["Views"]}</td>
+                    <td>${channel["Videos"]}</td>
+                </tr>`);
+            });
 
-                // Update Summary Cards
-                $("#totalSubscribers").text(totalSubscribers.toLocaleString());
-                $("#totalViews").text(totalViews.toLocaleString());
-                $("#totalVideos").text(totalVideos.toLocaleString());
+            // Update Summary Cards
+            $("#totalSubscribers").text(totalSubscribers.toLocaleString());
+            $("#totalViews").text(totalViews.toLocaleString());
+            $("#totalVideos").text(totalVideos.toLocaleString());
 
-                // Render Charts
-                renderBarChart(labels, subscribersData);
-                renderLineChart(labels, viewsData);
-            }
-        });
-    }
+            // Render Charts
+            renderBarChart(labels, subscribersData);
+            renderLineChart(labels, viewsData);
+        }
+    });
+}
+
 
     // Bar Chart (Subscribers Comparison)
     function renderBarChart(labels, data) {
