@@ -6,7 +6,7 @@
     <title>YouTube Stats Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -29,6 +29,14 @@
             </div>
         </div>
 
+        <!-- Progress Indicator -->
+        <div id="updateStatus" class="hidden">
+            <p id="updateMessage">Idle</p>
+            <div class="progress-bar">
+                <div id="updateProgressBar" class="progress"></div>
+            </div>
+        </div>
+
         <!-- Table Data -->
         <table>
             <thead>
@@ -44,155 +52,56 @@
             </tbody>
         </table>
 
-        <!-- Bar Chart (Comparison) -->
-        <h2>Subscribers Comparison</h2>
-        <canvas id="subscribersChart"></canvas>
-
-        <!-- Line Chart (Growth Trends) -->
-        <h2>Growth Trends</h2>
-        <canvas id="growthChart"></canvas>
-
     </div>
 
     <script>
-    let subscribersChartInstance = null;
-    let growthChartInstance = null;
-
     function loadData() {
-        $.get("/data", function(data) {  
-            let tableBody = $("#channelData");
-            tableBody.empty();
+        $.get("/data", function(data) {
+            $("#channelData").empty();
+            $("#totalSubscribers").text(data.totalSubscribers.toLocaleString());
+            $("#totalViews").text(data.totalViews.toLocaleString());
+            $("#totalVideos").text(data.totalVideos.toLocaleString());
 
-            let totalSubscribers = data.totalSubscribers;
-            let totalViews = data.totalViews;
-            let totalVideos = data.totalVideos;
-
-            let labels = [];
-            let subscribersData = [];
-            let viewsData = [];
-
-            if (!data.channels || data.channels.length === 0) {
-                tableBody.append("<tr><td colspan='4'>No data available.</td></tr>");
+            if (!data.channels.length) {
+                $("#channelData").append("<tr><td colspan='4'>No data available.</td></tr>");
             } else {
                 data.channels.forEach(channel => {
-                    labels.push(channel["Title"]);
-                    subscribersData.push(parseInt(channel["Subscribers"]));
-                    viewsData.push(parseInt(channel["Views"]));
-
-                    tableBody.append(`<tr>
+                    $("#channelData").append(`<tr>
                         <td>${channel["Title"]}</td>
                         <td>${channel["Subscribers"]}</td>
                         <td>${channel["Views"]}</td>
                         <td>${channel["Videos"]}</td>
                     </tr>`);
                 });
-
-                // Update Summary Cards
-                $("#totalSubscribers").text(totalSubscribers.toLocaleString());
-                $("#totalViews").text(totalViews.toLocaleString());
-                $("#totalVideos").text(totalVideos.toLocaleString());
-
-                // Render Charts
-                renderBarChart(labels, subscribersData);
-                renderLineChart(labels, viewsData);
             }
         });
     }
 
-    // ✅ Destroy existing charts before re-rendering
-    function renderBarChart(labels, data) {
-        if (subscribersChartInstance) {
-            subscribersChartInstance.destroy();
-        }
-        subscribersChartInstance = new Chart(document.getElementById("subscribersChart"), {
-            type: "bar",
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: "Subscribers",
-                    data: data,
-                    backgroundColor: "rgba(75, 192, 192, 0.6)"
-                }]
-            }
-        });
-    }
-
-    function renderLineChart(labels, data) {
-        if (growthChartInstance) {
-            growthChartInstance.destroy();
-        }
-        growthChartInstance = new Chart(document.getElementById("growthChart"), {
-            type: "line",
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: "Views Growth",
-                    data: data,
-                    borderColor: "rgba(255, 99, 132, 1)",
-                    backgroundColor: "rgba(255, 99, 132, 0.2)",
-                    fill: true
-                }]
-            }
-        });
-    }
-
-   $("#refresh").click(function() {
-    alert("Data update started! Refresh in a few seconds.");
-    
-    $.ajax({
-        url: "/update",
-        type: "POST",
-        contentType: "application/json",
-        success: function(response) {
-            console.log(response.message);
-        },
-        error: function(xhr) {
-            alert("Error updating data: " + xhr.responseText);
-        }
-    });
-});
-
-
-    $(document).ready(loadData);
-</script>
-    <script>
     function checkUpdateStatus() {
         $.get("/update_status", function(status) {
             $("#updateMessage").text(status.message);
-            $("#updateProgress").text(status.progress + "%");
+            $("#updateProgressBar").css("width", status.progress + "%");
 
             if (status.updating) {
+                $("#updateStatus").removeClass("hidden");
                 $("#refresh").prop("disabled", true);
             } else {
+                $("#updateStatus").addClass("hidden");
                 $("#refresh").prop("disabled", false);
             }
         });
     }
 
     $("#refresh").click(function() {
-        alert("Data update started! You will see progress below.");
-        
-        $.ajax({
-            url: "/update",
-            type: "POST",
-            contentType: "application/json",
-            success: function(response) {
-                console.log(response.message);
-                checkUpdateStatus();  // Immediately check status
-            },
-            error: function(xhr) {
-                alert("Error updating data: " + xhr.responseText);
-            }
+        $.post("/update", function(response) {
+            alert(response.message);
+            checkUpdateStatus();
         });
     });
 
-    setInterval(checkUpdateStatus, 2000); // Poll every 2 seconds
+    $(document).ready(loadData);
+    setInterval(checkUpdateStatus, 2000);
 </script>
-
-<p id="updateMessage">Idle</p>
-<p id="updateProgress">0%</p>
-
-
 
 </body>
 </html>
