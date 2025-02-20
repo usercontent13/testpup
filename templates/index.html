@@ -136,20 +136,22 @@
         });
     }
 
-    $("#refresh").click(function() {
-        $.ajax({
-            url: "/update",
-            type: "POST",
-            contentType: "application/json",
-            success: function(response) {
-                alert(response.message);
-                loadData();
-            },
-            error: function(xhr) {
-                alert("Error updating data: " + xhr.responseText);
-            }
-        });
+   $("#refresh").click(function() {
+    alert("Data update started! Refresh in a few seconds.");
+    
+    $.ajax({
+        url: "/update",
+        type: "POST",
+        contentType: "application/json",
+        success: function(response) {
+            console.log(response.message);
+        },
+        error: function(xhr) {
+            alert("Error updating data: " + xhr.responseText);
+        }
     });
+});
+
 
     $(document).ready(loadData);
 </script>
