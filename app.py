@@ -81,7 +81,10 @@ def get_data():
 # Background function for data fetching
 def fetch_data_background():
     """Fetch and store data asynchronously."""
+    print("🔄 Background thread started for updating YouTube stats...")
     fetch_and_store_channel_data(CHANNEL_IDS)
+    print("✅ Background data update completed.")
+
 
 # API Route to Fetch New Data (Async)
 @app.route("/update", methods=["POST"])
