@@ -155,6 +155,43 @@
 
     $(document).ready(loadData);
 </script>
+    <script>
+    function checkUpdateStatus() {
+        $.get("/update_status", function(status) {
+            $("#updateMessage").text(status.message);
+            $("#updateProgress").text(status.progress + "%");
+
+            if (status.updating) {
+                $("#refresh").prop("disabled", true);
+            } else {
+                $("#refresh").prop("disabled", false);
+            }
+        });
+    }
+
+    $("#refresh").click(function() {
+        alert("Data update started! You will see progress below.");
+        
+        $.ajax({
+            url: "/update",
+            type: "POST",
+            contentType: "application/json",
+            success: function(response) {
+                console.log(response.message);
+                checkUpdateStatus();  // Immediately check status
+            },
+            error: function(xhr) {
+                alert("Error updating data: " + xhr.responseText);
+            }
+        });
+    });
+
+    setInterval(checkUpdateStatus, 2000); // Poll every 2 seconds
+</script>
+
+<p id="updateMessage">Idle</p>
+<p id="updateProgress">0%</p>
+
 
 
 </body>
