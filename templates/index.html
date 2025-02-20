@@ -55,51 +55,56 @@
     </div>
 
     <script>
+    let subscribersChartInstance = null;
+    let growthChartInstance = null;
+
     function loadData() {
-    $.get("/data", function(data) {  
-        let tableBody = $("#channelData");
-        tableBody.empty();
+        $.get("/data", function(data) {  
+            let tableBody = $("#channelData");
+            tableBody.empty();
 
-        let totalSubscribers = data.totalSubscribers;
-        let totalViews = data.totalViews;
-        let totalVideos = data.totalVideos;
+            let totalSubscribers = data.totalSubscribers;
+            let totalViews = data.totalViews;
+            let totalVideos = data.totalVideos;
 
-        let labels = [];
-        let subscribersData = [];
-        let viewsData = [];
+            let labels = [];
+            let subscribersData = [];
+            let viewsData = [];
 
-        if (!data.channels || data.channels.length === 0) {
-            tableBody.append("<tr><td colspan='4'>No data available.</td></tr>");
-        } else {
-            data.channels.forEach(channel => {
-                labels.push(channel["Title"]);
-                subscribersData.push(parseInt(channel["Subscribers"]));
-                viewsData.push(parseInt(channel["Views"]));
+            if (!data.channels || data.channels.length === 0) {
+                tableBody.append("<tr><td colspan='4'>No data available.</td></tr>");
+            } else {
+                data.channels.forEach(channel => {
+                    labels.push(channel["Title"]);
+                    subscribersData.push(parseInt(channel["Subscribers"]));
+                    viewsData.push(parseInt(channel["Views"]));
 
-                tableBody.append(`<tr>
-                    <td>${channel["Title"]}</td>
-                    <td>${channel["Subscribers"]}</td>
-                    <td>${channel["Views"]}</td>
-                    <td>${channel["Videos"]}</td>
-                </tr>`);
-            });
+                    tableBody.append(`<tr>
+                        <td>${channel["Title"]}</td>
+                        <td>${channel["Subscribers"]}</td>
+                        <td>${channel["Views"]}</td>
+                        <td>${channel["Videos"]}</td>
+                    </tr>`);
+                });
 
-            // Update Summary Cards
-            $("#totalSubscribers").text(totalSubscribers.toLocaleString());
-            $("#totalViews").text(totalViews.toLocaleString());
-            $("#totalVideos").text(totalVideos.toLocaleString());
+                // Update Summary Cards
+                $("#totalSubscribers").text(totalSubscribers.toLocaleString());
+                $("#totalViews").text(totalViews.toLocaleString());
+                $("#totalVideos").text(totalVideos.toLocaleString());
 
-            // Render Charts
-            renderBarChart(labels, subscribersData);
-            renderLineChart(labels, viewsData);
-        }
-    });
-}
+                // Render Charts
+                renderBarChart(labels, subscribersData);
+                renderLineChart(labels, viewsData);
+            }
+        });
+    }
 
-
-    // Bar Chart (Subscribers Comparison)
+    // ✅ Destroy existing charts before re-rendering
     function renderBarChart(labels, data) {
-        new Chart(document.getElementById("subscribersChart"), {
+        if (subscribersChartInstance) {
+            subscribersChartInstance.destroy();
+        }
+        subscribersChartInstance = new Chart(document.getElementById("subscribersChart"), {
             type: "bar",
             data: {
                 labels: labels,
@@ -112,9 +117,11 @@
         });
     }
 
-    // Line Chart (Growth Trends)
     function renderLineChart(labels, data) {
-        new Chart(document.getElementById("growthChart"), {
+        if (growthChartInstance) {
+            growthChartInstance.destroy();
+        }
+        growthChartInstance = new Chart(document.getElementById("growthChart"), {
             type: "line",
             data: {
                 labels: labels,
@@ -145,7 +152,8 @@
     });
 
     $(document).ready(loadData);
-    </script>
+</script>
+
 
 </body>
 </html>
